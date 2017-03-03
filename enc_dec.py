@@ -53,6 +53,11 @@ class EncoderDecoder(Chain):
         - Explain the following lines of code
         - Think about what add_link() does and how can we access Links added in Chainer.
         - Why are there two loops or adding links?
+        
+        the codes below will add LSTM layers in our RNN architecture.
+        chaner use a term "link" to define the module to save and operate the parameter variable, simply link is a layer or another model which we will like to attach in our neural network (chain)
+        - add_link is used to attach link (in this case layer) to our chain, chain is a class that consist of one or more link. we can think of chain as a "chain that tie up together our link".
+        - there are two loops because we are making a a bidirectional RNN so the last one with rev suffix is the layer for the right-to-left order input
         '''
         self.lstm_enc = ["L{0:d}_enc".format(i) for i in range(nlayers_enc)]
         for lstm_name in self.lstm_enc:
@@ -72,11 +77,16 @@ class EncoderDecoder(Chain):
         '''
         ___QUESTION-1-DESCRIBE-B-START___
         Comment on the input and output sizes of the following layers:
+        
         - L.EmbedID(vsize_dec, 2*n_units)
+        for word embeeding layer, the input size will be the size of target vocabulary  (vsize_dec), the output will be 2 times the number of hidden unit in LSTM (n_units)
         - L.LSTM(2*n_units, 2*n_units)
+        for word embeeding layer, the input size should be similar to the number of output from previous layer so the input size will be 2*n_units and the output size is similar as input
         - L.Linear(2*n_units, vsize_dec)
-
+        same as before the input for this layer should be similar to previous LSTM layer, the diffrence is the output of this neural network will be the number of target vocabulary (size of prediction output)  
+ 
         Why are we using multipliers over the base number of units (n_units)?
+        We multiply the n_units by 2 because we will concatenated the the output of left-to-right and right-to-left layers encoder.
         '''
 
         self.add_link("embed_dec", L.EmbedID(vsize_dec, 2*n_units))
@@ -115,6 +125,8 @@ class EncoderDecoder(Chain):
         ___QUESTION-1-DESCRIBE-C-START___
 
         Describe what the function set_decoder_state() is doing. What are c_state and h_state?
+        because our encoder produce two version of output snce we have two version of input (left-to-right and right-to-left) 
+        the otput c and h need to be concate together before becoming input for the decoder
     '''
     def set_decoder_state(self):
         xp = cuda.cupy if self.gpuid >= 0 else np
@@ -139,6 +151,7 @@ class EncoderDecoder(Chain):
         for lstm_layer in lstm_layer_list[1:]:
             hs = self[lstm_layer](hs)
 
+    ## change code to word
     # Function to encode an source sentence word
     def encode(self, word, lstm_layer_list, train):
         self.feed_lstm(word, self.embed_enc, lstm_layer_list, train)
@@ -169,6 +182,7 @@ class EncoderDecoder(Chain):
             ___QUESTION-1-DESCRIBE-D-START___
 
             - Explain why we are performing two encode operations
+            because we are feeding our RNN model (training) with two version of the same input which are left-to-right and right-to-left
             '''
             self.encode(f_word, self.lstm_enc, train)
             self.encode(r_word, self.lstm_rev_enc, train)
@@ -242,6 +256,9 @@ class EncoderDecoder(Chain):
             ___QUESTION-1-DESCRIBE-E-START___
             Explain what loss is computed with an example
             What does this value mean?
+            this value mean how 
+            need to be edited => loss function that expresses your preference to what kinds of outputs y you’d like to see in response to your input sequences x.
+            
             '''
             self.loss += F.softmax_cross_entropy(predicted_out, next_word_var)
             '''___QUESTION-1-DESCRIBE-E-END___'''

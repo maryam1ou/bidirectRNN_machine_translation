@@ -51,9 +51,12 @@ xp = cuda.cupy if gpuid >= 0 else np
 #---------------------------------------------------------------------
 # Load dataset
 #---------------------------------------------------------------------
+## Word to index and index to word
 w2i = pickle.load(open(w2i_path, "rb"))
 i2w = pickle.load(open(i2w_path, "rb"))
+# frequency of word
 vocab = pickle.load(open(vocab_path, "rb"))
+
 vocab_size_en = min(len(i2w["en"]), max_vocab_size["en"])
 vocab_size_fr = min(len(i2w["fr"]), max_vocab_size["fr"])
 print("vocab size, en={0:d}, fr={1:d}".format(vocab_size_en, vocab_size_fr))
@@ -78,6 +81,11 @@ optimizer.setup(model)
 ___QUESTION-1-DESCRIBE-F-START___
 
 - Describe what the following line of code does
+
+add Hook function. hook function is executed after the gradient computation.
+this hook function use gradient clipping to clip the exploding gradient 
+by add L2 norm threshold after the gradient is computed.
+
 '''
 optimizer.add_hook(chainer.optimizer.GradientClipping(threshold=5))
 '''___QUESTION-1-DESCRIBE-F-END___'''
