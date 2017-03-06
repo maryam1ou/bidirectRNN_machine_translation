@@ -251,7 +251,6 @@ class EncoderDecoder(Chain):
             if self.attn == NO_ATTN:
                 predicted_out = self.out(self[self.lstm_dec[-1]].h)
                 # __QUESTION Add attention
-                pdb.set_trace()    
                 pass
 
             # compute loss
