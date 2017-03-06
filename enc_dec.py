@@ -18,7 +18,7 @@ import chainer.functions as F
 import chainer.links as L
 from chainer.training import extensions
 from chainer.functions.array import concat
-
+import pdb
 
 # In[]:
 # Import configuration file
@@ -60,8 +60,10 @@ class EncoderDecoder(Chain):
         - there are two loops because we are making a a bidirectional RNN so the last one with rev suffix is the layer for the right-to-left order input
         '''
         self.lstm_enc = ["L{0:d}_enc".format(i) for i in range(nlayers_enc)]
+
         for lstm_name in self.lstm_enc:
             self.add_link(lstm_name, L.LSTM(n_units, n_units))
+
 
         self.lstm_rev_enc = ["L{0:d}_rev_enc".format(i) for i in range(nlayers_enc)]
         for lstm_name in self.lstm_rev_enc:
@@ -72,7 +74,7 @@ class EncoderDecoder(Chain):
 
         #--------------------------------------------------------------------
         # add decoder layers
-        #--------------------------------------------------------------------
+        #----------------F----------------------------------------------------
         # add embedding layer
         '''
         ___QUESTION-1-DESCRIBE-B-START___
@@ -98,6 +100,7 @@ class EncoderDecoder(Chain):
 
         if attn > 0:
             # __QUESTION Add attention
+            # need to pust softmax here
             pass
 
         # Save the attention preference
@@ -142,28 +145,31 @@ class EncoderDecoder(Chain):
         embed_layer: embeddings layer to use
         lstm_layer:  list of names of lstm layers to use
     '''
-    def feed_lstm(self, word, embed_layer, lstm_layer_list, train):
+    def feed_lstm(self, word, embed_layer, lstm_layer_list, train, dropout=False):
         # get embedding for word
         embed_id = embed_layer(word)
         # feed into first LSTM layer
         hs = self[lstm_layer_list[0]](embed_id)
         # feed into remaining LSTM layers
         for lstm_layer in lstm_layer_list[1:]:
+            if dropout:
+                hs = F.dropout(hs,ratio=0.2,train=train)   
             hs = self[lstm_layer](hs)
 
     ## change code to word
     # Function to encode an source sentence word
     def encode(self, word, lstm_layer_list, train):
-        self.feed_lstm(word, self.embed_enc, lstm_layer_list, train)
+        self.feed_lstm(word, self.embed_enc, lstm_layer_list, train, dropout=False)
 
     # Function to decode a target sentence word
     def decode(self, word, train):
         self.feed_lstm(word, self.embed_dec, self.lstm_dec, train)
 
     '''
-
+    
     '''
     def encode_list(self, in_word_list, train=True):
+        # in word is just a french_word_idx
         xp = cuda.cupy if self.gpuid >= 0 else np
         # convert list of tokens into chainer variable list
         var_en = (Variable(xp.asarray(in_word_list, dtype=np.int32).reshape((-1,1)),
@@ -175,7 +181,6 @@ class EncoderDecoder(Chain):
         # array to store hidden states for each word
         # enc_states = xp.empty((0,2*self.n_units), dtype=xp.float32)
         first_entry = True
-
         # encode tokens
         for f_word, r_word in zip(var_en, var_rev_en):
             '''
@@ -195,6 +200,7 @@ class EncoderDecoder(Chain):
             # this can be used for implementing attention
             if first_entry == False:
                 h_state = F.concat((self[self.lstm_enc[-1]].h, self[self.lstm_rev_enc[-1]].h), axis=1)
+                # attention = np.dot(enc_states[-1].data, h_state[-1].data)
                 enc_states = F.concat((enc_states, h_state), axis=0)
             else:
                 enc_states = F.concat((self[self.lstm_enc[-1]].h, self[self.lstm_rev_enc[-1]].h), axis=1)
@@ -204,7 +210,7 @@ class EncoderDecoder(Chain):
 
 
     # Select a word from a probability distribution
-    # should return a chainer variable
+    # should return a chainer variable as in index
     def select_word(self, prob, train=True, sample=False):
         xp = cuda.cupy if self.gpuid >= 0 else np
         if not sample:
@@ -217,7 +223,8 @@ class EncoderDecoder(Chain):
             - Add code to sample from the probability distribution to
             choose the next word
             '''
-            pass
+            indx = np.random.choice(len(prob.data[0]),1,p=prob.data[0])
+            pred_word = Variable(xp.asarray([indx], dtype=np.int32), volatile=not train)
         return pred_word
 
     def encode_decode_train(self, in_word_list, out_word_list, train=True, sample=False):
@@ -243,19 +250,18 @@ class EncoderDecoder(Chain):
             self.decode(pred_word, train=train)
             if self.attn == NO_ATTN:
                 predicted_out = self.out(self[self.lstm_dec[-1]].h)
-            else:
                 # __QUESTION Add attention
+                pdb.set_trace()    
                 pass
 
             # compute loss
             prob = F.softmax(predicted_out)
-
             pred_word = self.select_word(prob, train=train, sample=False)
             # pred_word = Variable(xp.asarray([pred_word.data], dtype=np.int32), volatile=not train)
             '''
             ___QUESTION-1-DESCRIBE-E-START___
             Explain what loss is computed with an example
-            What does this value mean?
+            What does this value mean?out
             this value mean how 
             need to be edited => loss function that expresses your preference to what kinds of outputs y you’d like to see in response to your input sequences x.
             
@@ -300,11 +306,13 @@ class EncoderDecoder(Chain):
         # The visualisation function in nmt_translate.py assumes such an array as input.
         return predicted_sent, alpha_arr
 
+    ##@ they feed the in_word_list with fr_ids
     def encode_decode_predict(self, in_word_list, max_predict_len=20, sample=False):
         xp = cuda.cupy if self.gpuid >= 0 else np
         self.reset_state()
         # encode list of words/tokens
         in_word_list_no_padding = [w for w in in_word_list if w != PAD_ID]
+        ## @ do ffed forward training input (this time we don't train) just 
         enc_states = self.encode_list(in_word_list, train=False)
         # initialize decoder LSTM to final encoder state
         self.set_decoder_state()

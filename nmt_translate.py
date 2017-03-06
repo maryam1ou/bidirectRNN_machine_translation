@@ -28,6 +28,7 @@ import csv
 import time
 import matplotlib.gridspec as gridspec
 import importlib
+import pdb
 # %matplotlib inline
 
 # In[ ]:
@@ -46,6 +47,7 @@ from enc_dec import *
 # In[ ]:
 
 xp = cuda.cupy if gpuid >= 0 else np
+
 
 # In[ ]:
 #---------------------------------------------------------------------
@@ -175,8 +177,11 @@ def compute_dev_bleu():
                 fr_sent = line_fr.strip().split()
                 en_sent = line_en.strip().split()
 
+                # this change the unkown word from word to index, if it is not
+                # in the dictionary than it will be replaced by UNK_ID
                 fr_ids = [w2i["fr"].get(w, UNK_ID) for w in fr_sent]
                 en_ids = [w2i["en"].get(w, UNK_ID) for w in en_sent]
+
 
                 list_of_references.append(line_en.strip().decode())
                 pred_sent, alpha_arr = model.encode_decode_predict(fr_ids, max_predict_len=MAX_PREDICT_LEN)
@@ -357,9 +362,12 @@ def predict_sentence(line_fr, line_en=None, display=True,
         en_sent = line_en.strip().split()
         en_ids = [w2i["en"].get(w, UNK_ID) for w in en_sent]
 
+    ##### THE PREDICTING PHASE
     pred_ids, alpha_arr = model.encode_decode_predict(fr_ids, 
                                                       max_predict_len=MAX_PREDICT_LEN,
                                                       sample=sample)
+
+
     pred_words = [i2w["en"][w].decode() for w in pred_ids]
 
     prec = 0
