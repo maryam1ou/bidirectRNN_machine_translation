@@ -93,7 +93,7 @@ class EncoderDecoder(Chain):
 
         self.add_link("embed_dec", L.EmbedID(vsize_dec, 2*n_units))
 
-        MID_LAYER = "mid-layer"
+        self.MID_LAYER = "mid-layer"
         # add LSTM layers
         self.lstm_dec = ["L{0:d}_dec".format(i) for i in range(nlayers_dec)]
         for lstm_name in self.lstm_dec:
@@ -103,7 +103,7 @@ class EncoderDecoder(Chain):
         if attn > 0:
             # __QUESTION Add attention
             # linear_size_input = 2*n_units*2 # we concatinate c and ht then the size of the input of linear will be doubled
-            self.add_link(MID_LAYER,L.Linear(4*n_units, 2*n_units))
+            self.add_link(self.MID_LAYER, L.Linear(4*n_units, 2*n_units))
             # pdb.set_trace()
 
         # Save the attention preference
@@ -231,7 +231,8 @@ class EncoderDecoder(Chain):
             pred_word = Variable(xp.asarray([indx], dtype=np.int32), volatile=not train)
         return pred_word
 
-    def calculate_alignment(enc_states):
+    def calculate_alignment(self,enc_states):
+        xp = cuda.cupy if self.gpuid >= 0 else np
         self.alpha = []
         self.ct = []
         self.ht = self[self.lstm_dec[-1]].h
@@ -249,11 +250,11 @@ class EncoderDecoder(Chain):
             one_val = prev_hs.data * a
             sum_val += one_val
         self.ct = chainer.Variable(np.array([sum_val]))
-        self.ht_lambda = F.concat((self.ct, self.ht), axis=1)
+        ht_lambda = F.concat((self.ct, self.ht), axis=1)
         # compute loss
-        _out = self[MID_LAYER](ht_lambda)
+        _out = self[self.MID_LAYER](ht_lambda)
         predicted_out = self.out(chainer.functions.tanh(_out))
-        return self.predicted_out, self.alpha
+        return predicted_out, self.alpha
 
     def encode_decode_train(self, in_word_list, out_word_list, train=True, sample=False):
         xp = cuda.cupy if self.gpuid >= 0 else np
@@ -279,7 +280,8 @@ class EncoderDecoder(Chain):
             if self.attn == NO_ATTN:
                 predicted_out = self.out(self[self.lstm_dec[-1]].h)
             else: #### use attention
-                predicted_out = calculate_alignment(enc_states)
+                predicted_out,self.alpha = self.calculate_alignment(enc_states)
+                # pdb.set_trace()
             prob = F.softmax(predicted_out)
             pred_word = self.select_word(prob, train=train, sample=False)
             # pred_word = Variable(xp.asarray([pred_word.data], dtype=np.int32), volatile=not train)
@@ -318,8 +320,9 @@ class EncoderDecoder(Chain):
             if self.attn == NO_ATTN:
                 prob = F.softmax(self.out(self[self.lstm_dec[-1]].h))
             else:
-                # __QUESTION Add attention
-                pass
+                predicted_out,alha_arr = self.calculate_alignment(enc_states)
+                prob = F.softmax(predicted_out)
+
 
             pred_word = self.select_word(prob, train=False, sample=sample)
             # add integer id of predicted word to output list

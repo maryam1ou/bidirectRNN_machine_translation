@@ -89,9 +89,9 @@ else:
 # Model Parameters
 #---------------------------------------------------------------------
 # number of LSTM layers for encoder
-num_layers_enc = 4
+num_layers_enc = 1
 # number of LSTM layers for decoder
-num_layers_dec = 4
+num_layers_dec = 1
 # number of hidden units per LSTM
 # both encoder, decoder are similarly structured
 hidden_units = 100

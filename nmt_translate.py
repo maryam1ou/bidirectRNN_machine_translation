@@ -202,7 +202,7 @@ def compute_dev_bleu():
 # In[ ]:
 #---------------------------------------------------------------------
 # Main training loop
-#---------------------------------------------------------------------
+#-------------------------------------------------f--------------------
 def train_loop(text_fname, num_training, num_epochs, log_mode="a"):
     # Set up log file for loss
     log_train_fil = open(log_train_fil_name, mode=log_mode)
