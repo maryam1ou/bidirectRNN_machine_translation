@@ -93,15 +93,18 @@ class EncoderDecoder(Chain):
 
         self.add_link("embed_dec", L.EmbedID(vsize_dec, 2*n_units))
 
+        MID_LAYER = "mid-layer"
         # add LSTM layers
         self.lstm_dec = ["L{0:d}_dec".format(i) for i in range(nlayers_dec)]
         for lstm_name in self.lstm_dec:
             self.add_link(lstm_name, L.LSTM(2*n_units, 2*n_units))
 
+        linear_size_input = 2*n_units
         if attn > 0:
             # __QUESTION Add attention
-            # need to pust softmax here
-            pass
+            # linear_size_input = 2*n_units*2 # we concatinate c and ht then the size of the input of linear will be doubled
+            self.add_link(MID_LAYER,L.Linear(4*n_units, 2*n_units))
+            pdb.set_trace()
 
         # Save the attention preference
         # __QUESTION you should use this flag to check if attention
@@ -200,7 +203,6 @@ class EncoderDecoder(Chain):
             # this can be used for implementing attention
             if first_entry == False:
                 h_state = F.concat((self[self.lstm_enc[-1]].h, self[self.lstm_rev_enc[-1]].h), axis=1)
-                # attention = np.dot(enc_states[-1].data, h_state[-1].data)
                 enc_states = F.concat((enc_states, h_state), axis=0)
             else:
                 enc_states = F.concat((self[self.lstm_enc[-1]].h, self[self.lstm_rev_enc[-1]].h), axis=1)
@@ -242,18 +244,36 @@ class EncoderDecoder(Chain):
                             volatile=not train))
         # Initialise first decoded word to GOID
         pred_word = Variable(xp.asarray([GO_ID], dtype=np.int32), volatile=not train)
-
         # compute loss
+        self.alignment = []
+        self.ct = []
+        self.ht = []
         self.loss = 0
         # decode tokens
         for next_word_var in var_dec[1:]:
             self.decode(pred_word, train=train)
             if self.attn == NO_ATTN:
                 predicted_out = self.out(self[self.lstm_dec[-1]].h)
-                # __QUESTION Add attention
-                pass
+            else: # use attention
+                self.ht = self[self.lstm_dec[-1]].h
+                _exp_score = []
+                for prev_hs in enc_states:
+                    _score = xp.dot(self.ht.data[0].T,prev_hs.data)
+                    _exp_score.append(xp.exp(_score))
+                self.alignment = []
+                for score in _exp_score:
+                    self.alignment.append(float(score)/sum(_exp_score))
 
+                # after we got alignment we need to multiply it the hs again (weighted average)
+                sum_val = 0
+                for a,prev_hs in zip(self.alignment,enc_states):
+                    one_val = prev_hs.data * a
+                    sum_val += one_val
+            self.ct = chainer.Variable(np.array([sum_val]))
+            self.ht_lambda = F.concat((self.ct, self.ht), axis=1)
             # compute loss
+            _out = self[MID_LAYER](ht_lambda)
+            predicted_out = self.out(chainer.functions.tanh(_out))
             prob = F.softmax(predicted_out)
             pred_word = self.select_word(prob, train=train, sample=False)
             # pred_word = Variable(xp.asarray([pred_word.data], dtype=np.int32), volatile=not train)
