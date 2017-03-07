@@ -104,13 +104,15 @@ class EncoderDecoder(Chain):
             # __QUESTION Add attention
             # linear_size_input = 2*n_units*2 # we concatinate c and ht then the size of the input of linear will be doubled
             self.add_link(MID_LAYER,L.Linear(4*n_units, 2*n_units))
-            pdb.set_trace()
+            # pdb.set_trace()
 
         # Save the attention preference
         # __QUESTION you should use this flag to check if attention
         # has been selected. Your code should work with and without attention
         self.attn = attn
-
+        self.alpha = []
+        self.ct = []
+        self.ht = []
         # add output layer
         self.add_link("out", L.Linear(2*n_units, vsize_dec))
         '''
@@ -229,6 +231,30 @@ class EncoderDecoder(Chain):
             pred_word = Variable(xp.asarray([indx], dtype=np.int32), volatile=not train)
         return pred_word
 
+    def calculate_alignment(enc_states):
+        self.alpha = []
+        self.ct = []
+        self.ht = self[self.lstm_dec[-1]].h
+        _exp_score = []
+        for prev_hs in enc_states:
+            _score = xp.dot(self.ht.data[0].T,prev_hs.data)
+            _exp_score.append(xp.exp(_score))
+        # calculate score for all-t
+        for score in _exp_score:
+            self.alpha.append(float(score)/sum(_exp_score))
+
+        # after we got alignment we need to multiply it the hs again (weighted average)
+        sum_val = 0
+        for a,prev_hs in zip(self.alpha,enc_states):
+            one_val = prev_hs.data * a
+            sum_val += one_val
+        self.ct = chainer.Variable(np.array([sum_val]))
+        self.ht_lambda = F.concat((self.ct, self.ht), axis=1)
+        # compute loss
+        _out = self[MID_LAYER](ht_lambda)
+        predicted_out = self.out(chainer.functions.tanh(_out))
+        return self.predicted_out, self.alpha
+
     def encode_decode_train(self, in_word_list, out_word_list, train=True, sample=False):
         xp = cuda.cupy if self.gpuid >= 0 else np
         self.reset_state()
@@ -245,35 +271,15 @@ class EncoderDecoder(Chain):
         # Initialise first decoded word to GOID
         pred_word = Variable(xp.asarray([GO_ID], dtype=np.int32), volatile=not train)
         # compute loss
-        self.alignment = []
-        self.ct = []
-        self.ht = []
+      
         self.loss = 0
         # decode tokens
         for next_word_var in var_dec[1:]:
             self.decode(pred_word, train=train)
             if self.attn == NO_ATTN:
                 predicted_out = self.out(self[self.lstm_dec[-1]].h)
-            else: # use attention
-                self.ht = self[self.lstm_dec[-1]].h
-                _exp_score = []
-                for prev_hs in enc_states:
-                    _score = xp.dot(self.ht.data[0].T,prev_hs.data)
-                    _exp_score.append(xp.exp(_score))
-                self.alignment = []
-                for score in _exp_score:
-                    self.alignment.append(float(score)/sum(_exp_score))
-
-                # after we got alignment we need to multiply it the hs again (weighted average)
-                sum_val = 0
-                for a,prev_hs in zip(self.alignment,enc_states):
-                    one_val = prev_hs.data * a
-                    sum_val += one_val
-            self.ct = chainer.Variable(np.array([sum_val]))
-            self.ht_lambda = F.concat((self.ct, self.ht), axis=1)
-            # compute loss
-            _out = self[MID_LAYER](ht_lambda)
-            predicted_out = self.out(chainer.functions.tanh(_out))
+            else: #### use attention
+                predicted_out = calculate_alignment(enc_states)
             prob = F.softmax(predicted_out)
             pred_word = self.select_word(prob, train=train, sample=False)
             # pred_word = Variable(xp.asarray([pred_word.data], dtype=np.int32), volatile=not train)
