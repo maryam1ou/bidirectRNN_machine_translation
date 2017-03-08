@@ -231,7 +231,7 @@ class EncoderDecoder(Chain):
             pred_word = Variable(xp.asarray([indx], dtype=np.int32), volatile=not train)
         return pred_word
 
-    def calculate_alignment(self,enc_states):
+    def calculate_alignment(self,enc_states,train=True):
         xp = cuda.cupy if self.gpuid >= 0 else np
         self.alpha = []
         self.ct = []
@@ -249,7 +249,7 @@ class EncoderDecoder(Chain):
         for a,prev_hs in zip(self.alpha,enc_states):
             one_val = prev_hs.data * a
             sum_val += one_val
-        self.ct = chainer.Variable(np.array([sum_val]))
+        self.ct = chainer.Variable(np.array([sum_val]),volatile=(not train))
         ht_lambda = F.concat((self.ct, self.ht), axis=1)
         # compute loss
         _out = self[self.MID_LAYER](ht_lambda)
@@ -280,7 +280,7 @@ class EncoderDecoder(Chain):
             if self.attn == NO_ATTN:
                 predicted_out = self.out(self[self.lstm_dec[-1]].h)
             else: #### use attention
-                predicted_out,self.alpha = self.calculate_alignment(enc_states)
+                predicted_out,self.alpha = self.calculate_alignment(enc_states,train)
                 # pdb.set_trace()
             prob = F.softmax(predicted_out)
             pred_word = self.select_word(prob, train=train, sample=False)
@@ -320,7 +320,7 @@ class EncoderDecoder(Chain):
             if self.attn == NO_ATTN:
                 prob = F.softmax(self.out(self[self.lstm_dec[-1]].h))
             else:
-                predicted_out,alha_arr = self.calculate_alignment(enc_states)
+                predicted_out,alha_arr = self.calculate_alignment(enc_states,False)
                 prob = F.softmax(predicted_out)
 
 
