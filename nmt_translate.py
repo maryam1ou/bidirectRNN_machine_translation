@@ -85,7 +85,7 @@ ___QUESTION-1-DESCRIBE-F-START___
 - Describe what the following line of code does
 
 add Hook function. hook function is executed after the gradient computation.
-this hook function use gradient clipping to clip the exploding gradient 
+this hook function use gradient clipping to clip the exploding gradient
 by add L2 norm threshold after the gradient is computed.
 
 '''
@@ -132,7 +132,7 @@ def compute_dev_pplx():
                     pbar.set_description(out_str)
                     pbar.update(1)
                     num_sents += 1
-                
+
             # end for
         # end pbar
     # end with open file
@@ -209,7 +209,7 @@ def train_loop(text_fname, num_training, num_epochs, log_mode="a"):
     log_train_csv = csv.writer(log_train_fil, lineterminator="\n")
 
     sys.stderr.flush()
-
+    model.to_gpu()
     for epoch in range(num_epochs):
         with open(text_fname["fr"], "rb") as fr_file, open(text_fname["en"], "rb") as en_file:
             with tqdm(total=num_training) as pbar:
@@ -255,7 +255,7 @@ def train_loop(text_fname, num_training, num_epochs, log_mode="a"):
 
 
         # compute precision, recall and F-score
-        metrics = predict(s=NUM_TRAINING_SENTENCES, 
+        metrics = predict(s=NUM_TRAINING_SENTENCES,
                          num=NUM_DEV_SENTENCES, display=False, plot=False)
         prec = np.sum(metrics["cp"]) / np.sum(metrics["tp"])
         rec = np.sum(metrics["cp"]) / np.sum(metrics["t"])
@@ -281,7 +281,7 @@ def train_loop(text_fname, num_training, num_epochs, log_mode="a"):
             bleu_score = compute_dev_bleu()
             print("finished computing bleu ... ")
             print("{0:s}".format("-"*50))
-        
+
     # At the end of training, make some predictions
     # make predictions over both training and dev sets
     print("Training set predictions")
@@ -353,7 +353,7 @@ def plot_attention(alpha_arr, fr, en, plot_name=None):
 #---------------------------------------------------------------------
 # Helper function for prediction
 #---------------------------------------------------------------------
-def predict_sentence(line_fr, line_en=None, display=True, 
+def predict_sentence(line_fr, line_en=None, display=True,
                      plot_name=None, p_filt=0, r_filt=0, sample=False):
     fr_sent = line_fr.strip().split()
     fr_ids = [w2i["fr"].get(w, UNK_ID) for w in fr_sent]
@@ -363,7 +363,7 @@ def predict_sentence(line_fr, line_en=None, display=True,
         en_ids = [w2i["en"].get(w, UNK_ID) for w in en_sent]
 
     ##### THE PREDICTING PHASE
-    pred_ids, alpha_arr = model.encode_decode_predict(fr_ids, 
+    pred_ids, alpha_arr = model.encode_decode_predict(fr_ids,
                                                       max_predict_len=MAX_PREDICT_LEN,
                                                       sample=sample)
 
@@ -411,9 +411,9 @@ r_filt  : recall filter. Only displays predicted sentences with recall above p_f
 sample  : if False, predict word with maximum probability in the model, else sample
 '''
 #---------------------------------------------------------------------
-def predict(s=NUM_TRAINING_SENTENCES, num=NUM_DEV_SENTENCES, 
+def predict(s=NUM_TRAINING_SENTENCES, num=NUM_DEV_SENTENCES,
             display=True, plot=False, p_filt=0, r_filt=0, sample=False):
-    
+
     if display:
         print("English predictions, s={0:d}, num={1:d}:".format(s, num))
 
@@ -433,7 +433,7 @@ def predict(s=NUM_TRAINING_SENTENCES, num=NUM_DEV_SENTENCES,
                 cp, tp, t, f = predict_sentence(line_fr,
                                              line_en,
                                              display=display,
-                                             plot_name=plot_name, 
+                                             plot_name=plot_name,
                                              p_filt=p_filt, r_filt=r_filt,
                                              sample=sample)
                 metrics["cp"].append(cp)
@@ -443,7 +443,7 @@ def predict(s=NUM_TRAINING_SENTENCES, num=NUM_DEV_SENTENCES,
 
     if display:
         print("sentences matching filter = {0:d}".format(filter_count))
-    
+
     return metrics
 
 
@@ -482,7 +482,7 @@ def main():
 
     if NUM_EPOCHS > 0:
         train_loop(text_fname, NUM_TRAINING_SENTENCES, NUM_EPOCHS)
-    
+
 if __name__ == "__main__":
     main()
 
@@ -497,5 +497,3 @@ def test_lam_tran():
         line_en = line_en.encode()
 
         predict_sentence(line_fr=line_fr, line_en=line_en)
-
-

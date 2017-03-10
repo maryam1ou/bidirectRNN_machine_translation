@@ -178,11 +178,11 @@ class EncoderDecoder(Chain):
         # in word is just a french_word_idx
         xp = cuda.cupy if self.gpuid >= 0 else np
         # convert list of tokens into chainer variable list
-        var_en = (Variable(xp.asarray(in_word_list, dtype=np.int32).reshape((-1,1)),
-                           volatile=(not train)))
+        var_en = (Variable(cuda.to_gpu(xp.asarray(in_word_list, dtype=np.int32).reshape((-1,1)),
+                           volatile=(not train))))
 
-        var_rev_en = (Variable(xp.asarray(in_word_list[::-1], dtype=np.int32).reshape((-1,1)),
-                           volatile=(not train)))
+        var_rev_en = (Variable(cuda.to_gpu(xp.asarray(in_word_list[::-1], dtype=np.int32).reshape((-1,1)),
+                           volatile=(not train))))
 
         # array to store hidden states for each word
         # enc_states = xp.empty((0,2*self.n_units), dtype=xp.float32)
@@ -223,7 +223,7 @@ class EncoderDecoder(Chain):
         xp = cuda.cupy if self.gpuid >= 0 else np
         if not sample:
             indx = xp.argmax(prob.data[0])
-            pred_word = Variable(xp.asarray([indx], dtype=np.int32), volatile=not train)
+            pred_word = Variable(cuda.to_gpu(xp.asarray([indx], dtype=np.int32), volatile=not train))
         else:
             '''
             ___QUESTION-2-SAMPLE
@@ -232,7 +232,7 @@ class EncoderDecoder(Chain):
             choose the next word
             '''
             indx = np.random.choice(len(prob.data[0]),1,p=prob.data[0])
-            pred_word = Variable(xp.asarray([indx], dtype=np.int32), volatile=not train)
+            pred_word = Variable(cuda.to_gpu(xp.asarray([indx], dtype=np.int32), volatile=not train))
         return pred_word
 
     def calculate_alignment(self,enc_states,train=True):
@@ -253,7 +253,7 @@ class EncoderDecoder(Chain):
         for a,prev_hs in zip(self.alpha,enc_states):
             one_val = prev_hs.data * a
             sum_val += one_val
-        self.ct = chainer.Variable(np.array([sum_val]),volatile=(not train))
+        self.ct = chainer.Variable(cuda.to_gpu(np.array([sum_val]),volatile=(not train)))
         ht_lambda = F.concat((self.ct, self.ht), axis=1)
         # compute loss
         _out = self[self.MID_LAYER](ht_lambda)
@@ -271,10 +271,10 @@ class EncoderDecoder(Chain):
         self.set_decoder_state()
         # decode and compute loss
         # convert list of tokens into chainer variable list
-        var_dec = (Variable(xp.asarray(decoder_word_list, dtype=np.int32).reshape((-1,1)),
-                            volatile=not train))
+        var_dec = (Variable(cuda.to_gpu(cuda.to_gpu(xp.asarray(decoder_word_list, dtype=np.int32).reshape((-1,1)),
+                            volatile=not train))))
         # Initialise first decoded word to GOID
-        pred_word = Variable(xp.asarray([GO_ID], dtype=np.int32), volatile=not train)
+        pred_word = Variable(cuda.to_gpu(xp.asarray([GO_ID], dtype=np.int32), volatile=not train))
         # compute loss
 
         self.loss = 0
@@ -314,7 +314,7 @@ class EncoderDecoder(Chain):
         # return list of predicted words
         predicted_sent = []
         # load start symbol
-        pred_word = Variable(xp.asarray([start_word], dtype=np.int32), volatile=True)
+        pred_word = Variable(cuda.to_gpu(xp.asarray([start_word], dtype=np.int32), volatile=True))
         pred_count = 0
 
         # start prediction loop
