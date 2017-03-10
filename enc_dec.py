@@ -167,7 +167,7 @@ class EncoderDecoder(Chain):
 
     # Function to decode a target sentence word
     def decode(self, word, train):
-        self.feed_lstm(word, self.embed_dec, self.lstm_dec, train)
+        self.feed_lstm(word, self.embed_dec, self.lstm_dec, train, dropout=True)
 
     '''
 

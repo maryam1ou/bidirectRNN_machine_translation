@@ -89,9 +89,9 @@ else:
 # Model Parameters
 #---------------------------------------------------------------------
 # number of LSTM layers for encoder
-num_layers_enc = 2
+num_layers_enc = 1
 # number of LSTM layers for decoder
-num_layers_dec = 2
+num_layers_dec = 1
 # number of hidden units per LSTM
 # both encoder, decoder are similarly structured
 hidden_units = 100
@@ -110,7 +110,7 @@ load_existing_model = True
 # Training EPOCHS
 NUM_EPOCHS = 14
 # if >= 0, use GPU, if negative use CPU
-gpuid = -1
+gpuid = 0
 #---------------------------------------------------------------------
 # Log file details - changing the following names not recommended
 #---------------------------------------------------------------------
