@@ -53,7 +53,7 @@ class EncoderDecoder(Chain):
         - Explain the following lines of code
         - Think about what add_link() does and how can we access Links added in Chainer.
         - Why are there two loops or adding links?
-        
+
         the codes below will add LSTM layers in our RNN architecture.
         chaner use a term "link" to define the module to save and operate the parameter variable, simply link is a layer or another model which we will like to attach in our neural network (chain)
         - add_link is used to attach link (in this case layer) to our chain, chain is a class that consist of one or more link. we can think of chain as a "chain that tie up together our link".
@@ -79,14 +79,14 @@ class EncoderDecoder(Chain):
         '''
         ___QUESTION-1-DESCRIBE-B-START___
         Comment on the input and output sizes of the following layers:
-        
+
         - L.EmbedID(vsize_dec, 2*n_units)
         for word embeeding layer, the input size will be the size of target vocabulary  (vsize_dec), the output will be 2 times the number of hidden unit in LSTM (n_units)
         - L.LSTM(2*n_units, 2*n_units)
         for word embeeding layer, the input size should be similar to the number of output from previous layer so the input size will be 2*n_units and the output size is similar as input
         - L.Linear(2*n_units, vsize_dec)
-        same as before the input for this layer should be similar to previous LSTM layer, the diffrence is the output of this neural network will be the number of target vocabulary (size of prediction output)  
- 
+        same as before the input for this layer should be similar to previous LSTM layer, the diffrence is the output of this neural network will be the number of target vocabulary (size of prediction output)
+
         Why are we using multipliers over the base number of units (n_units)?
         We multiply the n_units by 2 because we will concatenated the the output of left-to-right and right-to-left layers encoder.
         '''
@@ -133,7 +133,7 @@ class EncoderDecoder(Chain):
         ___QUESTION-1-DESCRIBE-C-START___
 
         Describe what the function set_decoder_state() is doing. What are c_state and h_state?
-        because our encoder produce two version of output snce we have two version of input (left-to-right and right-to-left) 
+        because our encoder produce two version of output snce we have two version of input (left-to-right and right-to-left)
         the otput c and h need to be concate together before becoming input for the decoder
     '''
     def set_decoder_state(self):
@@ -158,20 +158,21 @@ class EncoderDecoder(Chain):
         # feed into remaining LSTM layers
         for lstm_layer in lstm_layer_list[1:]:
             if dropout:
-                hs = F.dropout(hs,ratio=0.2,train=train)   
+                hs = F.dropout(hs,ratio=0.2,train=train)
             hs = self[lstm_layer](hs)
 
     ## change code to word
     # Function to encode an source sentence word
+    # I only put dropout in the encoding
     def encode(self, word, lstm_layer_list, train):
-        self.feed_lstm(word, self.embed_enc, lstm_layer_list, train, dropout=False)
+        self.feed_lstm(word, self.embed_enc, lstm_layer_list, train, dropout=True)
 
     # Function to decode a target sentence word
     def decode(self, word, train):
         self.feed_lstm(word, self.embed_dec, self.lstm_dec, train)
 
     '''
-    
+
     '''
     def encode_list(self, in_word_list, train=True):
         # in word is just a french_word_idx
@@ -210,7 +211,7 @@ class EncoderDecoder(Chain):
                 forward_states = self[self.lstm_enc[-1]].h
                 backward_states = self[self.lstm_rev_enc[-1]].h
                 first_entry = False
-        
+
         enc_states = F.concat((forward_states, backward_states), axis=1)
 
         return enc_states
@@ -275,7 +276,7 @@ class EncoderDecoder(Chain):
         # Initialise first decoded word to GOID
         pred_word = Variable(xp.asarray([GO_ID], dtype=np.int32), volatile=not train)
         # compute loss
-      
+
         self.loss = 0
         # decode tokens
         for next_word_var in var_dec[1:]:
@@ -292,9 +293,9 @@ class EncoderDecoder(Chain):
             ___QUESTION-1-DESCRIBE-E-START___
             Explain what loss is computed with an example
             What does this value mean?out
-            this value mean how 
+            this value mean how
             need to be edited => loss function that expresses your preference to what kinds of outputs y you’d like to see in response to your input sequences x.
-            
+
             '''
             self.loss += F.softmax_cross_entropy(predicted_out, next_word_var)
             '''___QUESTION-1-DESCRIBE-E-END___'''
@@ -343,7 +344,7 @@ class EncoderDecoder(Chain):
         self.reset_state()
         # encode list of words/tokens
         in_word_list_no_padding = [w for w in in_word_list if w != PAD_ID]
-        ## @ do ffed forward training input (this time we don't train) just 
+        ## @ do ffed forward training input (this time we don't train) just
         enc_states = self.encode_list(in_word_list, train=False)
         # initialize decoder LSTM to final encoder state
         self.set_decoder_state()

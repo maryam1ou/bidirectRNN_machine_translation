@@ -67,7 +67,7 @@ print("Japanese English dataset configuration")
 
 # Set experiment name - can be used to save models with different
 # names
-EXP_NAME = "exp1_layer_5_5"
+EXP_NAME = "question3_afterUpdate"
 
 # the maximum number of words to predict if EOS not predicted
 MAX_PREDICT_LEN = 20
@@ -89,9 +89,9 @@ else:
 # Model Parameters
 #---------------------------------------------------------------------
 # number of LSTM layers for encoder
-num_layers_enc = 1
+num_layers_enc = 2
 # number of LSTM layers for decoder
-num_layers_dec = 1
+num_layers_dec = 2
 # number of hidden units per LSTM
 # both encoder, decoder are similarly structured
 hidden_units = 100
