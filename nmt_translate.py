@@ -377,7 +377,6 @@ def predict_sentence(line_fr, line_en=None, display=True,
     matches = count_match(en_ids, pred_ids)
     prec = matches/len(pred_ids)
     rec = matches/len(en_ids)
-
     if display and (prec >= p_filt and rec >= r_filt):
         filter_match = True
         # convert raw binary into string
@@ -480,8 +479,9 @@ def main():
                 Delete before continuing, or enable load_existing flag""".format(model_fil))
             return
 
+    #predict(s=NUM_TRAINING_SENTENCES, num=NUM_DEV_SENTENCES)
     if NUM_EPOCHS > 0:
-        train_loop(text_fname, NUM_TRAINING_SENTENCES, NUM_EPOCHS)
+         train_loop(text_fname, NUM_TRAINING_SENTENCES, NUM_EPOCHS)
     
 if __name__ == "__main__":
     main()
@@ -497,5 +497,4 @@ def test_lam_tran():
         line_en = line_en.encode()
 
         predict_sentence(line_fr=line_fr, line_en=line_en)
-
 

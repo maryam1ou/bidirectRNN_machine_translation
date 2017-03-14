@@ -104,7 +104,6 @@ class EncoderDecoder(Chain):
             # __QUESTION Add attention
             # linear_size_input = 2*n_units*2 # we concatinate c and ht then the size of the input of linear will be doubled
             self.add_link(self.MID_LAYER, L.Linear(4*n_units, 2*n_units))
-            # pdb.set_trace()
 
         # Save the attention preference
         # __QUESTION you should use this flag to check if attention
@@ -154,7 +153,6 @@ class EncoderDecoder(Chain):
         # get embedding for word
         embed_id = embed_layer(word)
         # feed into first LSTM layer
-        # pdb.set_trace()
         hs = self[lstm_layer_list[0]](embed_id)
         # feed into remaining LSTM layers
         for lstm_layer in lstm_layer_list[1:]:
@@ -243,18 +241,17 @@ class EncoderDecoder(Chain):
         self.alpha = []
         self.ct = []
         self.ht = self[self.lstm_dec[-1]].h
+        # previous work on calculating the alpha manualy
         # _exp_score = []
-        # 
         # for prev_hs in enc_states:
-        #     pdb.set_trace()
         #     _score = F.matmul(self.ht.data,prev_hs.data.T)
         #     _exp_score.append(_score)
         # # # calculate score for all-t
         # for score in _exp_score:
         #     self.alpha.append(float(score)/sum(_exp_score))
+
         _score = F.matmul(self.ht.data,enc_states.data.T)
         self.alpha = F.softmax(_score)
-        # pdb.set_trace()
         # after we got alignment we need to multiply it the hs again (weighted average)
         sum_val = 0
         for a,prev_hs in zip(self.alpha.data[0],enc_states):
@@ -262,8 +259,6 @@ class EncoderDecoder(Chain):
             sum_val += one_val
 
         self.ct = chainer.Variable(np.array([sum_val]),volatile=(not train))
-        # pdb.set_trace()
-        # self.ct = F.matmul(xp.asarray(self.alpha, dtype=xp.float32).reshape(1,10), enc_states)
         ht_lambda = F.concat((self.ct, self.ht), axis=1)
         # compute loss
         _out = self[self.MID_LAYER](ht_lambda)
@@ -295,7 +290,6 @@ class EncoderDecoder(Chain):
                 predicted_out = self.out(self[self.lstm_dec[-1]].h)
             else: #### use attention
                 predicted_out,self.alpha = self.calculate_alignment(enc_states,train)
-                # pdb.set_trace()
             prob = F.softmax(predicted_out)
             pred_word = self.select_word(prob, train=train, sample=False)
             # pred_word = Variable(xp.asarray([pred_word.data], dtype=np.int32), volatile=not train)
@@ -335,13 +329,9 @@ class EncoderDecoder(Chain):
                 prob = F.softmax(self.out(self[self.lstm_dec[-1]].h))
             else:
                 predicted_out,_alpha = self.calculate_alignment(enc_states,False)
-                # pdb.set_trace()
                 # alpha_arr = F.concat((alpha_arr,xp.asarray(_alpha,dtype=xp.float32).reshape(1,len(_alpha))),axis=0).data
-                try:
-                    _alpha = xp.asarray(_alpha.data,dtype=xp.float32).reshape(1,_alpha.shape[1])
-                    alpha_arr = xp.concatenate((alpha_arr,_alpha),axis=0)
-                except:
-                    pdb.set_trace()
+                _alpha = xp.asarray(_alpha.data,dtype=xp.float32).reshape(1,_alpha.shape[1])
+                alpha_arr = xp.concatenate((alpha_arr,_alpha),axis=0)
                 prob = F.softmax(predicted_out)
 
             pred_word = self.select_word(prob, train=False, sample=sample)
